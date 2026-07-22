@@ -13,7 +13,8 @@ node install.mjs --replace
 The installer copies the setup to ~/.pi/agent/ylli-setup and configures Pi with
 absolute paths. It installs Pi 0.81.1 when necessary, or updates an existing Pi
 installation to that version. Node.js 20 or newer with npm is required. The
-cloned folder is not needed after installation.
+cloned folder is not needed after installation and cannot load a second local
+copy of the packages.
 
 Start Pi from any directory:
 

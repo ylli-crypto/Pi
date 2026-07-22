@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -58,15 +58,11 @@ for (const entry of readdirSync(join(setupHome, "packages", "active"), { withFil
   }
 }
 
-const sourceSettings = JSON.parse(readFileSync(join(sourceRoot, ".pi", "settings.json"), "utf8"));
-const packages = (sourceSettings.packages ?? []).map((entry) => {
-  const source = typeof entry === "string" ? entry : entry.source;
-  const packagePath = resolve(setupHome, "packages", "active", source.split(/[\\/]/).pop());
-  if (!existsSync(join(packagePath, "package.json"))) {
-    throw new Error("Missing package: " + packagePath);
-  }
-  return packagePath;
-});
+const activePackagesPath = join(setupHome, "packages", "active");
+const packages = readdirSync(activePackagesPath, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(activePackagesPath, entry.name, "package.json")))
+  .map((entry) => join(activePackagesPath, entry.name))
+  .sort((left, right) => left.localeCompare(right));
 
 mkdirSync(agentHome, { recursive: true });
 writeFileSync(
