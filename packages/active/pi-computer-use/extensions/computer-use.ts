@@ -1,7 +1,6 @@
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
-	ensureComputerUseSetup,
 	executeAct,
 	executeEvaluateBrowser,
 	executeExpandUi,
@@ -206,11 +205,9 @@ export default function computerUseExtension(pi: ExtensionAPI): void {
 		},
 	});
 
-	pi.on("session_start", async (_event, ctx) => {
+	pi.on("session_start", (_event, ctx) => {
 		loadComputerUseConfig(ctx.cwd);
 		reconstructStateFromBranch(ctx);
-		if (!ctx.hasUI) return;
-		try { await ensureComputerUseSetup(ctx); } catch (error) { ctx.ui.notify(error instanceof Error ? error.message : String(error), "warning"); }
 	});
 
 	pi.on("session_shutdown", async () => {
