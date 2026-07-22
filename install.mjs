@@ -15,6 +15,7 @@ const sourceRoot = dirname(fileURLToPath(import.meta.url));
 const agentHome = join(homedir(), ".pi", "agent");
 const setupHome = join(agentHome, "ylli-setup");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const piCommand = process.platform === "win32" ? "pi.cmd" : "pi";
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, stdio: "inherit" });
@@ -37,6 +38,7 @@ function copyTree(source, destination) {
   });
 }
 
+console.log("[1/4] Installing Pi globally...");
 run(npmCommand, [
   "install",
   "--global",
@@ -45,24 +47,29 @@ run(npmCommand, [
   "--no-fund",
 ]);
 
+console.log("[2/4] Copying the setup to " + setupHome + "...");
 copyTree(join(sourceRoot, "packages", "active"), join(setupHome, "packages", "active"));
 copyTree(join(sourceRoot, ".pi", "agents"), join(agentHome, "agents"));
 copyTree(join(sourceRoot, ".pi", "skills"), join(agentHome, "skills"));
 copyTree(join(sourceRoot, "config"), join(setupHome, "config"));
 
-for (const entry of readdirSync(join(setupHome, "packages", "active"), { withFileTypes: true })) {
-  if (!entry.isDirectory()) continue;
-  const packagePath = join(setupHome, "packages", "active", entry.name);
-  if (existsSync(join(packagePath, "package-lock.json"))) {
-    run(npmCommand, ["ci", "--omit=dev", "--no-audit", "--no-fund"], packagePath);
-  }
+const activePackagesPath = join(setupHome, "packages", "active");
+const packageDirectories = readdirSync(activePackagesPath, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort((left, right) => left.localeCompare(right));
+
+console.log("[3/4] Installing dependencies for " + packageDirectories.length + " packages...");
+for (const name of packageDirectories) {
+  const packagePath = join(activePackagesPath, name);
+  if (!existsSync(join(packagePath, "package-lock.json"))) continue;
+  console.log("  - " + name);
+  run(npmCommand, ["ci", "--omit=dev", "--no-audit", "--no-fund"], packagePath);
 }
 
-const activePackagesPath = join(setupHome, "packages", "active");
-const packages = readdirSync(activePackagesPath, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && existsSync(join(activePackagesPath, entry.name, "package.json")))
-  .map((entry) => join(activePackagesPath, entry.name))
-  .sort((left, right) => left.localeCompare(right));
+const packages = packageDirectories
+  .filter((name) => existsSync(join(activePackagesPath, name, "package.json")))
+  .map((name) => join(activePackagesPath, name));
 
 mkdirSync(agentHome, { recursive: true });
 writeFileSync(
@@ -70,5 +77,13 @@ writeFileSync(
   JSON.stringify({ enableSkillCommands: true, packages }, null, 2) + "\n",
 );
 
-console.log("Pi setup installed in " + setupHome);
+console.log("[4/4] Checking the global pi command...");
+const piCheck = spawnSync(piCommand, ["--version"], { stdio: "ignore" });
+if (piCheck.error || piCheck.status !== 0) {
+  console.error("Pi was installed globally, but the pi command is not available in this terminal.");
+  console.error("Open a new terminal and run: pi");
+  process.exit(1);
+}
+
+console.log("Pi is installed globally in " + setupHome);
 console.log("Start Pi from any directory with: pi");
