@@ -1,0 +1,14 @@
+{
+  "name": "pi-model-switch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Model switching controls for Pi.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

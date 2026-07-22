@@ -1,0 +1,23 @@
+{
+  "name": "pi-interactive-shell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive terminal overlays and supervised shell sessions for Pi.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "dependencies": {
+    "@xterm/addon-serialize": "^0.13.0",
+    "@xterm/headless": "^5.5.0",
+    "typebox": "^1.1.24",
+    "zigpty": "^0.1.6"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  }
+}

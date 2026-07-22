@@ -1,0 +1,11 @@
+{
+  "providers": {
+    "openrouter": {
+      "modelOverrides": {
+        "z-ai/glm-5.2": {
+          "maxTokens": 32768
+        }
+      }
+    }
+  }
+}

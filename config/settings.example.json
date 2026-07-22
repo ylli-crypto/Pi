@@ -1,0 +1,16 @@
+{
+  "theme": "light",
+  "defaultThinkingLevel": "high",
+  "enableSkillCommands": true,
+  "packages": [],
+  "subagents": {
+    "agentOverrides": {
+      "planner": { "disabled": true },
+      "researcher": { "disabled": true },
+      "worker": { "disabled": true },
+      "delegate": { "disabled": true },
+      "context-builder": { "disabled": true },
+      "oracle": { "disabled": true }
+    }
+  }
+}

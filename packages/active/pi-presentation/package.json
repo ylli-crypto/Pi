@@ -1,0 +1,17 @@
+{
+  "name": "pi-presentation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HTML presentation generator for Pi.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "prompts": [
+      "./prompts"
+    ]
+  }
+}

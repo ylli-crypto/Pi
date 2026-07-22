@@ -1,0 +1,22 @@
+{
+  "name": "pi-plan-mode",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Read-only planning mode for Pi.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "pi": {
+    "extensions": [
+      "./src/plan-mode.ts"
+    ]
+  }
+}

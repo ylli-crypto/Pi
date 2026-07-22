@@ -1,0 +1,17 @@
+{
+  "name": "pi-annotate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visual annotations for Pi coding-agent sessions.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "dependencies": {
+    "typebox": "^1.1.24"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
