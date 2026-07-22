@@ -74,7 +74,7 @@ const packages = packageDirectories
 mkdirSync(agentHome, { recursive: true });
 writeFileSync(
   join(agentHome, "settings.json"),
-  JSON.stringify({ enableSkillCommands: true, packages }, null, 2) + "\n",
+  JSON.stringify({ enableSkillCommands: true, quietStartup: true, packages }, null, 2) + "\n",
 );
 
 console.log("[4/4] Checking the global pi command...");
