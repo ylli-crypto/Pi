@@ -47,23 +47,6 @@ import {
   shortcutConflictKey,
   shortcutUsesSuper,
 } from "./shortcuts.ts";
-import { 
-  initVibeManager, 
-  onVibeBeforeAgentStart, 
-  onVibeAgentStart, 
-  onVibeAgentEnd,
-  onVibeToolCall,
-  getVibeTheme,
-  setVibeTheme,
-  getVibeModel,
-  setVibeModel,
-  getVibeMode,
-  setVibeMode,
-  hasVibeFile,
-  getVibeFileCount,
-  generateVibesBatch,
-} from "./working-vibes.ts";
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Configuration
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1350,9 +1333,6 @@ export default function powerlineFooter(pi: ExtensionAPI) {
       ctx.ui.setStatus("stash", undefined);
     }
     
-    // Initialize vibe manager (needs modelRegistry from ctx)
-    initVibeManager(ctx);
-    
     if (enabled && ctx.hasUI) {
       setupCustomEditor(ctx);
       if (shouldShowStartupWelcome(event.reason, config.welcome)) {
@@ -1471,12 +1451,8 @@ export default function powerlineFooter(pi: ExtensionAPI) {
     requestImmediateStatusRender({ deferDuringTyping: false });
   });
 
-  // Generate themed working message before agent starts (has access to user's prompt)
-  pi.on("before_agent_start", async (event, ctx) => {
+  pi.on("before_agent_start", async (event) => {
     lastUserPrompt = event.prompt;
-    if (ctx.hasUI) {
-      onVibeBeforeAgentStart(event.prompt, ctx.ui.setWorkingMessage);
-    }
   });
 
   // Track streaming state (footer only shows status during streaming)
@@ -1484,7 +1460,6 @@ export default function powerlineFooter(pi: ExtensionAPI) {
   pi.on("agent_start", async (_event, ctx) => {
     isStreaming = true;
     liveAssistantUsage = null;
-    onVibeAgentStart();
     dismissWelcome(ctx);
     currentCtx = ctx;
   });
@@ -1518,41 +1493,9 @@ export default function powerlineFooter(pi: ExtensionAPI) {
     requestImmediateStatusRender({ deferDuringTyping: false });
   });
 
-  // Also dismiss on tool calls (agent is working) + refresh vibe if rate limit allows
-  pi.on("tool_call", async (event, ctx) => {
+  pi.on("tool_call", async (_event, ctx) => {
     dismissWelcome(ctx);
-    if (ctx.hasUI) {
-      // Extract recent agent context from session for richer vibe generation
-      const agentContext = getRecentAgentContext(ctx);
-      onVibeToolCall(event.toolName, event.input, ctx.ui.setWorkingMessage, agentContext);
-    }
   });
-  
-  // Helper to extract recent agent response text (skipping thinking blocks)
-  function getRecentAgentContext(ctx: any): string | undefined {
-    const sessionEvents = ctx.sessionManager?.getBranch?.() ?? [];
-    
-    // Find the most recent assistant message
-    for (let i = sessionEvents.length - 1; i >= 0; i--) {
-      const e = sessionEvents[i];
-      if (e.type === "message" && e.message?.role === "assistant") {
-        const content = e.message.content;
-        if (!Array.isArray(content)) continue;
-        
-        // Extract text content, skip thinking blocks
-        for (const block of content) {
-          if (block.type === "text" && block.text) {
-            // Return first ~200 chars of non-empty text
-            const text = block.text.trim();
-            if (text.length > 0) {
-              return text.slice(0, 200);
-            }
-          }
-        }
-      }
-    }
-    return undefined;
-  }
 
   function dismissWelcome(ctx: any) {
     welcomeDismissScheduler.cancel();
@@ -1830,7 +1773,6 @@ export default function powerlineFooter(pi: ExtensionAPI) {
     currentCtx = ctx;
     try {
       if (hasUI) {
-        onVibeAgentEnd(ctx.ui.setWorkingMessage); // working-vibes internal state + reset message
         if (stashedEditorText !== null) {
           if (ctx.ui.getEditorText().trim() === "") {
             ctx.ui.setEditorText(stashedEditorText);
@@ -2034,125 +1976,6 @@ export default function powerlineFooter(pi: ExtensionAPI) {
     },
   });
 
-
-  // Command to set working message theme
-  pi.registerCommand("vibe", {
-    description: "Set working message theme. Usage: /vibe [theme|off|mode|model|generate]",
-    handler: async (args, ctx) => {
-      const parts = args?.trim().split(/\s+/) || [];
-      const subcommand = parts[0]?.toLowerCase();
-      
-      // No args: show current status
-      if (!args || !args.trim()) {
-        const theme = getVibeTheme();
-        const mode = getVibeMode();
-        const model = getVibeModel();
-        let status = `Vibe: ${theme || "off"} | Mode: ${mode} | Model: ${model}`;
-        if (theme && mode === "file") {
-          const count = getVibeFileCount(theme);
-          status += count > 0 ? ` | File: ${count} vibes` : " | File: not found";
-        }
-        ctx.ui.notify(status, "info");
-        return;
-      }
-      
-      // /vibe model [spec] - show or set model
-      if (subcommand === "model") {
-        const modelSpec = parts.slice(1).join(" ");
-        if (!modelSpec) {
-          ctx.ui.notify(`Current vibe model: ${getVibeModel()}`, "info");
-          return;
-        }
-        // Validate format (provider/modelId)
-        if (!modelSpec.includes("/")) {
-          ctx.ui.notify("Invalid model format. Use: provider/modelId (e.g., openai-codex/gpt-5.4-mini)", "error");
-          return;
-        }
-        const persisted = setVibeModel(modelSpec);
-        if (persisted) {
-          ctx.ui.notify(`Vibe model set to: ${modelSpec}`, "info");
-        } else {
-          ctx.ui.notify(`Vibe model set to: ${modelSpec} (not persisted; check settings.json)`, "warning");
-        }
-        return;
-      }
-      
-      // /vibe mode [generate|file] - show or set mode
-      if (subcommand === "mode") {
-        const newMode = parts[1]?.toLowerCase();
-        if (!newMode) {
-          ctx.ui.notify(`Current vibe mode: ${getVibeMode()}`, "info");
-          return;
-        }
-        if (newMode !== "generate" && newMode !== "file") {
-          ctx.ui.notify("Invalid mode. Use: generate or file", "error");
-          return;
-        }
-        // Check if file exists when switching to file mode
-        const theme = getVibeTheme();
-        if (newMode === "file" && theme && !hasVibeFile(theme)) {
-          ctx.ui.notify(`No vibe file for "${theme}". Run /vibe generate ${theme} first`, "error");
-          return;
-        }
-        const persisted = setVibeMode(newMode);
-        if (persisted) {
-          ctx.ui.notify(`Vibe mode set to: ${newMode}`, "info");
-        } else {
-          ctx.ui.notify(`Vibe mode set to: ${newMode} (not persisted; check settings.json)`, "warning");
-        }
-        return;
-      }
-      
-      // /vibe generate <theme> [count] - generate vibes and save to file
-      if (subcommand === "generate") {
-        const theme = parts[1];
-        const parsedCount = Number.parseInt(parts[2] ?? "", 10);
-        const count = Number.isFinite(parsedCount)
-          ? Math.min(Math.max(Math.floor(parsedCount), 1), 500)
-          : 100;
-
-        if (!theme) {
-          ctx.ui.notify("Usage: /vibe generate <theme> [count]", "error");
-          return;
-        }
-
-        ctx.ui.notify(`Generating ${count} vibes for "${theme}"...`, "info");
-
-        const result = await generateVibesBatch(theme, count);
-        
-        if (result.success) {
-          ctx.ui.notify(`Generated ${result.count} vibes for "${theme}" → ${result.filePath}`, "info");
-        } else {
-          ctx.ui.notify(`Failed to generate vibes: ${result.error}`, "error");
-        }
-        return;
-      }
-      
-      // /vibe off - disable
-      if (subcommand === "off") {
-        const persisted = setVibeTheme(null);
-        if (persisted) {
-          ctx.ui.notify("Vibe disabled", "info");
-        } else {
-          ctx.ui.notify("Vibe disabled (not persisted; check settings.json)", "warning");
-        }
-        return;
-      }
-      
-      // /vibe <theme> - set theme (preserve original casing)
-      const theme = args.trim();
-      const persisted = setVibeTheme(theme);
-      const mode = getVibeMode();
-      if (mode === "file" && !hasVibeFile(theme)) {
-        const suffix = persisted ? "" : " (not persisted; check settings.json)";
-        ctx.ui.notify(`Vibe set to: ${theme} (file mode, but no file found - run /vibe generate ${theme})${suffix}`, "warning");
-      } else if (persisted) {
-        ctx.ui.notify(`Vibe set to: ${theme}`, "info");
-      } else {
-        ctx.ui.notify(`Vibe set to: ${theme} (not persisted; check settings.json)`, "warning");
-      }
-    },
-  });
 
   function buildSegmentContext(ctx: any, theme: Theme): SegmentContext {
     const presetDef = getPreset(config.preset);
