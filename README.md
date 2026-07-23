@@ -13,23 +13,27 @@ reviewer subagents, and the bundled skills.
 ### macOS / Linux
 
 ~~~sh
-git clone https://github.com/ylli-crypto/Pi.git "$HOME/.pi/ylli-setup-source"
-cd "$HOME/.pi/ylli-setup-source"
+git clone https://github.com/ylli-crypto/Pi.git
+cd Pi
 sh install.sh
 ~~~
 
 ### Windows PowerShell
 
 ~~~powershell
-git clone https://github.com/ylli-crypto/Pi.git "$env:USERPROFILE\.pi\ylli-setup-source"
-Set-Location "$env:USERPROFILE\.pi\ylli-setup-source"
+git clone https://github.com/ylli-crypto/Pi.git
+Set-Location Pi
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ~~~
 
-The installer checks Node.js, installs Pi globally, installs the dependencies
-for all 13 packages, and verifies the global pi command. It installs this
-setup in ~/.pi/agent/ylli-setup and replaces ~/.pi/agent/settings.json with
-this setup's global configuration.
+The cloned Pi folder is the installation folder. The installer shows a
+confirmation first. Choose No to abort without changing anything. Choose Yes
+to delete the existing global Pi command and all previous Pi data in ~/.pi,
+then install a clean Pi and this setup only.
+
+Pi is added through npm's global command path, so pi can be started from any
+directory. The 13 package sources remain in the cloned Pi folder. Do not move
+or delete that folder after installation.
 
 After it completes, open a new terminal and run:
 
@@ -44,7 +48,7 @@ Pi can then be started from any directory.
 Run the same installer again:
 
 ~~~sh
-cd "$HOME/.pi/ylli-setup-source"
+cd Pi
 git pull
 sh install.sh
 ~~~

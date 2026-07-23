@@ -27,4 +27,4 @@ esac
   fail "Node.js 20 or newer is required. Found Node.js $(node --version)."
 
 printf '%s\n' "Installing Pi Setup from: $root"
-exec node "$root/install.mjs" --replace
+exec node "$root/install.mjs"

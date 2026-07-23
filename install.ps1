@@ -26,5 +26,5 @@ if ($nodeMajor -lt 20) {
 
 $root = Split-Path -Parent $PSCommandPath
 Write-Output "Installing Pi Setup from: $root"
-& node (Join-Path $root "install.mjs") --replace
+& node (Join-Path $root "install.mjs")
 exit $LASTEXITCODE
