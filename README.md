@@ -32,8 +32,10 @@ to delete the existing global Pi command and all previous Pi data in ~/.pi,
 then install a clean Pi and this setup only.
 
 Pi is added through npm's global command path, so pi can be started from any
-directory. The 13 package sources remain in the cloned Pi folder. Do not move
-or delete that folder after installation.
+directory. The 13 package sources remain in the cloned Pi folder. The installer
+links them into ~/.pi via a symlink anchor, so if you move the folder, just
+re-run the installer from the new location to re-point the link. Do not delete
+the folder after installation.
 
 After it completes, open a new terminal and run:
 
