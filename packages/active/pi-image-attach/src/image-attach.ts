@@ -114,12 +114,14 @@ function parseImagePathLines(text: string, cwd: string): ImagePathCandidate[] {
 			const path = resolveImagePath(inner, cwd);
 			if (path) candidates.push({ path, start: lineStart + match.index, end: lineStart + match.index + rawToken.length });
 		}
-		// Bare path tokens ending in an image extension.
-		for (const match of line.matchAll(/[^\s"'`]+/g)) {
+		// Bare path tokens ending in an image extension. Backslash-escaped
+		// characters (e.g. `Screenshot\ 1.png`) stay inside the token.
+		for (const match of line.matchAll(/(?:[^\s"'`\\]|\\.)+/g)) {
 			if (match.index === undefined) continue;
 			const rawToken = match[0];
-			const token = rawToken.replace(TRAILING_PUNCTUATION, "");
-			if (token !== rawToken && rawToken.length - token.length > 4) continue;
+			const unescaped = rawToken.replace(/\\(.)/g, "$1");
+			const token = unescaped.replace(TRAILING_PUNCTUATION, "");
+			if (unescaped !== rawToken && token === "") continue;
 			if (!IMAGE_EXT_PATTERN.test(token)) continue;
 			// Require a path separator when pasted inline, otherwise require existence in cwd.
 			const pathLike = SEPARATOR_PATTERN.test(token) || /^\./i.test(token) || isAbsolute(token);
