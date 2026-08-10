@@ -1,0 +1,22 @@
+{
+  "name": "pi-image-attach",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turn dragged/pasted image file paths into numbered labeled image attachments, Codex-style.",
+  "type": "module",
+  "author": "Ylli Kolgeci",
+  "license": "MIT",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "pi": {
+    "extensions": [
+      "./src/image-attach.ts"
+    ]
+  }
+}
