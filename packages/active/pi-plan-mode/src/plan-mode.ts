@@ -329,16 +329,14 @@ export default function planMode(pi: ExtensionAPI) {
 
 		readyPresentationIntent = undefined;
 		try {
-			if (intent.source === "legacy_proposed_plan") {
-				pi.sendMessage(
-					{
-						customType: PROPOSED_PLAN_MESSAGE_TYPE,
-						content: `**Proposed Plan**\n\n${intent.plan}`,
-						display: true,
-					},
-					{ triggerTurn: false },
-				);
-			}
+			pi.sendMessage(
+				{
+					customType: PROPOSED_PLAN_MESSAGE_TYPE,
+					content: `**Proposed Plan**\n\n${intent.plan}`,
+					display: true,
+				},
+				{ triggerTurn: false },
+			);
 			if (ctx.hasUI && completedPlanIsCurrent(intent)) {
 				await showPlanReadyMenu(ctx);
 			}
