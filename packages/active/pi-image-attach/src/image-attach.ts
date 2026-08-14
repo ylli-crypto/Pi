@@ -41,6 +41,15 @@ const RESET = "\x1b[0m";
 
 const LABEL_PATTERN = /🖼 Image \d+/g;
 
+type MarkdownTransformer = (
+	markdown: string,
+	context: { messageType: string; isStreaming: boolean },
+) => string;
+
+type MarkdownTransformerAPI = {
+	registerMarkdownTransformer?: (transformer: MarkdownTransformer) => void;
+};
+
 export default function imageAttach(pi: ExtensionAPI) {
 	pi.on("input", async (event, ctx) => {
 		if (event.source === "extension") return { action: "continue" };
@@ -49,7 +58,7 @@ export default function imageAttach(pi: ExtensionAPI) {
 		if (candidates.length === 0) return { action: "continue" };
 
 		const images: ImageContent[] = [];
-		const replacements = new Map<number, string>();
+		const replacements = new Map<number, { candidate: ImagePathCandidate; label: string }>();
 		let imageNumber = 1;
 		for (const candidate of candidates) {
 			const block = await readImageBlock(candidate.path);
@@ -69,10 +78,13 @@ export default function imageAttach(pi: ExtensionAPI) {
 		};
 	});
 
-	pi.registerMarkdownTransformer((markdown, { messageType, isStreaming }) => {
-		if (messageType !== "user" || isStreaming) return markdown;
-		return markdown.replace(LABEL_PATTERN, (label) => `${IMAGE_LABEL_STYLE}${label}${RESET}`);
-	});
+	const markdownAPI = pi as ExtensionAPI & MarkdownTransformerAPI;
+	if (typeof markdownAPI.registerMarkdownTransformer === "function") {
+		markdownAPI.registerMarkdownTransformer((markdown, { messageType, isStreaming }) => {
+			if (messageType !== "user" || isStreaming) return markdown;
+			return markdown.replace(LABEL_PATTERN, (label) => `${IMAGE_LABEL_STYLE}${label}${RESET}`);
+		});
+	}
 }
 
 const TRAILING_PUNCTUATION = /[\s,;.!?…:)]+$/;
