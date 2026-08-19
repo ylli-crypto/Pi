@@ -255,6 +255,88 @@ function firstShellSegment(command: string): string {
   return command.trim();
 }
 
+/**
+ * Collapse a leading absolute-path token onto its root so an "always allow"
+ * rule applies much earlier and covers every subdirectory. Paths under the
+ * user's home directory become `<home>*` (e.g. `/Users/ylli*`); any other
+ * absolute path becomes its first top-level component (e.g. `/opt*`, `/dev*`).
+ * Returns `undefined` when the token is not an absolute path.
+ */
+function firstPathRoot(token: string): string | undefined {
+  const expanded =
+    token === "~"
+      ? homedir()
+      : token.startsWith("~/")
+        ? `${homedir()}${token.slice(1)}`
+        : token === "$HOME"
+          ? homedir()
+          : token.startsWith("$HOME/")
+            ? `${homedir()}${token.slice("$HOME".length)}`
+            : token.startsWith("/")
+              ? token
+              : undefined;
+  if (expanded === undefined) return undefined;
+  const absolute = resolve(expanded);
+  if (within(homedir(), absolute)) return `${homedir()}*`;
+  const segments = absolute.split(/[\\/]/).filter(Boolean);
+  if (segments.length === 0) return undefined;
+  return `/${segments[0]}*`;
+}
+
+/**
+ * Find the first absolute-path token in a single shell segment and rebuild the
+ * suggested rule from everything up to that token plus the collapsed root
+ * (`... <root>*`). The wildcard afterwards is greedy across `/`, so deeper
+ * paths still match. Returns `undefined` when the segment has no absolute path.
+ */
+function broadenAbsoluteRule(prefix: string): string | undefined {
+  let current = "";
+  let start = 0;
+  let quote: "'" | '"' | undefined;
+  let escaped = false;
+  const tokens: Array<{ start: number; text: string }> = [];
+  for (let index = 0; index < prefix.length; index += 1) {
+    const character = prefix[index];
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+    if (character === "\\" && quote !== "'") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = undefined;
+      else current += character;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (/\s/.test(character)) {
+      if (current) {
+        tokens.push({ start, text: current });
+        current = "";
+      }
+      continue;
+    }
+    if (!current) start = index;
+    current += character;
+  }
+  if (quote || escaped) return undefined;
+  if (current) tokens.push({ start, text: current });
+
+  for (const token of tokens) {
+    const root = firstPathRoot(token.text);
+    if (!root) continue;
+    const before = prefix.slice(0, token.start).trimEnd();
+    return before ? `${before} ${root}` : root;
+  }
+  return undefined;
+}
+
 function actionSuggestion(request: PermissionRequest): Omit<AllowRule, "id" | "createdAt" | "source"> | undefined {
   if (request.kind === "mcp") return makeRule("mcp", request.subject);
   if (request.kind === "skill") return makeRule("skill", request.subject);
@@ -263,11 +345,17 @@ function actionSuggestion(request: PermissionRequest): Omit<AllowRule, "id" | "c
     // mutating shell syntax. Compound commands persist only their first shell
     // segment, matching the Codex-style "commands starting with" behavior.
     // Commands that appear to contain a secret are never persisted.
+    // Leading absolute-path arguments are collapsed onto their root (home
+    // directory or top-level component) so the wildcard applies much earlier
+    // and covers every subdirectory, e.g. `cd /Users/ylli/Desktop/... && ...`
+    // is persisted as `cd /Users/ylli*`.
     if (request.shell?.hasLikelySecret) return undefined;
     const prefix = request.shell?.simple
       ? (safeShellFamily(request) ?? request.subject)
       : firstShellSegment(request.subject);
-    return makeRule("bash", prefix.includes("*") ? prefix : `${prefix} *`);
+    const broadened = broadenAbsoluteRule(prefix);
+    const subject = broadened ?? (prefix.includes("*") ? prefix : `${prefix} *`);
+    return makeRule("bash", subject);
   }
 
   if (["write", "edit"].includes(request.toolName)) {
