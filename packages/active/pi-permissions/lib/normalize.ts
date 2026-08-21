@@ -196,13 +196,14 @@ function uniquePaths(paths: PathCandidate[]): PathCandidate[] {
 }
 
 function shellPaths(shell: ShellClassification, cwd: string): PathCandidate[] {
-  // For simple commands the tokenizer is authoritative. For compound commands,
-  // still scan path-shaped lexical tokens so `.env` and credential guards cannot
-  // be bypassed just by adding a redirect, pipe, or command substitution.
+  // For simple commands the tokenizer result is authoritative. For compound
+  // commands, tokenize the same quote/escape-aware way instead of a bare regex,
+  // so a `/` that lives inside a relative path (`src/ui/Dialog.tsx`) or a
+  // sed/grep expression (`s/.*://`) is not mistaken for an absolute path and
+  // turned into a spurious "external directory" prompt.
   const tokens = shell.simple
     ? [...shell.tokens]
-    : (shell.raw.match(/(?:~\/|\$[A-Za-z_][A-Za-z0-9_]*\/|\/|\.\.\/|\.\/)[^\s;|&<>`]+|(?:^|\s)(?:\.env(?:\.[^\s;|&<>`]*)?|id_rsa)\b/g) ?? [])
-        .map((token) => token.trim());
+    : (tokenizeSimpleShell(shell.raw) ?? []);
   // Catch sensitive names embedded in variable expansion or quoted program
   // arguments (for example `${PWD}/.env` or `python -c "open('.env')"`).
   const envMatch = shell.raw.match(/\.env(?:\.[A-Za-z0-9_.-]+)?/);
